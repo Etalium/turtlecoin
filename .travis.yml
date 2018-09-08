@@ -3,23 +3,32 @@ language: cpp
 
 matrix:
   include:
+
+  # Ubuntu, g++7
   - os: linux
+    compiler: gcc
     addons:
       apt:
         sources:
         - ubuntu-toolchain-r-test
-        packages:
-        - libboost1.55-all-dev
+        packages: 
+          - libboost1.55-all-dev
+          - g++-7
+          - gcc-7
     env:
-    - MATRIX_EVAL="CC=gcc && CXX=g++"
+    - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
     - LABEL="linux"
     - STRIP="strip"
+
+  # OSX
   - os: osx
     env:
     - MATRIX_EVAL="CC=gcc && CXX=g++"
-    - CXXFLAGS="-std=gnu++11"
+    - CXXFLAGS="-std=gnu++17"
     - LABEL="osx"
     - STRIP="strip"
+
+  # Arm (aarch64) cross compile
   - os: linux
     addons:
       apt:
@@ -47,6 +56,7 @@ install:
 - if [[ "$LABEL" == "aarch64" ]]; then cd .. ; fi
 
 script:
+- eval $MATRIX_EVAL
 - mkdir build && cd build
 - cmake -DCMAKE_BUILD_TYPE=Release -DSTATIC=true .. ${CUSTOM_BOOST_ROOT} && make -j2
 

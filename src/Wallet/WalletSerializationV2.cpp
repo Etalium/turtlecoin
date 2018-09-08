@@ -128,7 +128,6 @@ WalletSerializerV2::WalletSerializerV2(
   std::string& extra,
   uint32_t transactionSoftLockTime
 ) :
-  m_transfersObserver(transfersObserver),
   m_actualBalance(actualBalance),
   m_pendingBalance(pendingBalance),
   m_walletsContainer(walletsContainer),
@@ -137,8 +136,7 @@ WalletSerializerV2::WalletSerializerV2(
   m_transactions(transactions),
   m_transfers(transfers),
   m_uncommitedTransactions(uncommitedTransactions),
-  m_extra(extra),
-  m_transactionSoftLockTime(transactionSoftLockTime)
+  m_extra(extra)
 {
 }
 
