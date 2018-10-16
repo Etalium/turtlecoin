@@ -546,7 +546,7 @@ std::vector<WalletTypes::WalletBlockInfo>
 }
 
 WalletTypes::RawCoinbaseTransaction
-    Core::getRawCoinbaseTransaction(const CryptoNote::Transaction t)
+    Core::getRawCoinbaseTransaction(const CryptoNote::Transaction t) const
 {
     WalletTypes::RawCoinbaseTransaction transaction;
 
@@ -567,10 +567,13 @@ WalletTypes::RawCoinbaseTransaction
         transaction.keyOutputs.push_back(keyOutput);
     }
 
+    /* Fill in the global indexes (The indexes of the key images in the DB) */
+    getTransactionGlobalIndexes(transaction.hash, transaction.globalIndexes);
+
     return transaction;
 }
 
-WalletTypes::RawTransaction Core::getRawTransaction(const std::vector<uint8_t> rawTX)
+WalletTypes::RawTransaction Core::getRawTransaction(const std::vector<uint8_t> rawTX) const
 {
     Transaction t;
 
@@ -605,6 +608,9 @@ WalletTypes::RawTransaction Core::getRawTransaction(const std::vector<uint8_t> r
     {
         transaction.keyInputs.push_back(boost::get<CryptoNote::KeyInput>(input));
     }
+
+    /* Fill in the global indexes (The indexes of the key images in the DB) */
+    getTransactionGlobalIndexes(transaction.hash, transaction.globalIndexes);
 
     return transaction;
 }

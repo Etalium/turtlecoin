@@ -15,7 +15,6 @@
 
 #include <CryptoTypes.h>
 
-#include "generic-ops.h"
 #include "hash.h"
 
 namespace Crypto {
@@ -258,6 +257,3 @@ struct EllipticCurveScalar {
   }
 
 }
-
-CRYPTO_MAKE_HASHABLE(PublicKey)
-CRYPTO_MAKE_HASHABLE(KeyImage)
