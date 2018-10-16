@@ -18,7 +18,7 @@ std::vector<WalletTypes::TransactionDestination> setupDestinations(
     const std::string changeAddress);
 
 std::vector<WalletTypes::ObscuredInput> setupFakeInputs(
-    const std::vector<WalletTypes::TxInputAndOwner> sources,
+    std::vector<WalletTypes::TxInputAndOwner> sources,
     const uint64_t mixin,
     const std::shared_ptr<CryptoNote::NodeRpcProxy> daemon);
 

@@ -183,7 +183,7 @@ std::tuple<WalletError, Crypto::Hash> WalletBackend::sendTransactionAdvanced(
        their sum. The sumOfInputs is sometimes (most of the time) greater than
        the amount we want to send, so we need to send some back to ourselves
        as change. */
-    const auto [ourInputs, sumOfInputs] = m_subWallets->getTransactionInputsForAmount(
+    auto [ourInputs, sumOfInputs] = m_subWallets->getTransactionInputsForAmount(
         totalAmount, takeFromAllSubWallets, subWalletsToTakeFrom
     );
 
@@ -317,10 +317,18 @@ std::vector<WalletTypes::TransactionDestination> setupDestinations(
 
 /* Take our inputs and pad them with fake inputs, based on our mixin value */
 std::vector<WalletTypes::ObscuredInput> setupFakeInputs(
-    const std::vector<WalletTypes::TxInputAndOwner> sources,
+    std::vector<WalletTypes::TxInputAndOwner> sources,
     const uint64_t mixin,
     const std::shared_ptr<CryptoNote::NodeRpcProxy> daemon)
 {
+    /* TODO ??? */
+    /* Sort our inputs by amount so they match up with the values we get
+       back from the daemon */
+    std::sort(sources.begin(), sources.end(), [](const auto &lhs, const auto &rhs)
+    {
+        return lhs.input.amount < rhs.input.amount;
+    });
+
     /* TODO: Better rpc method? */
     std::vector<CryptoNote::COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount> fakeOuts;
 
@@ -364,7 +372,7 @@ std::vector<WalletTypes::ObscuredInput> setupFakeInputs(
         WalletTypes::GlobalIndexToKey realOutput;
 
         realOutput.index = walletAmount.input.globalOutputIndex;
-        realOutput.key = Crypto::PublicKey(walletAmount.input.keyImage.data);
+        realOutput.key = walletAmount.input.key;
 
         WalletTypes::ObscuredInput obscuredInput;
 
@@ -419,10 +427,10 @@ std::vector<WalletTypes::ObscuredInput> setupFakeInputs(
         });
         
         /* Insert our real output among the fakes */
-        obscuredInput.outputs.insert(insertPosition, realOutput);
+        auto newPosition = obscuredInput.outputs.insert(insertPosition, realOutput);
 
         /* Indicate which of the outputs is the real one, e.g. number 4 */
-        obscuredInput.realOutput = insertPosition - obscuredInput.outputs.begin();
+        obscuredInput.realOutput = newPosition - obscuredInput.outputs.begin();
 
         result.push_back(obscuredInput);
 
@@ -475,6 +483,12 @@ std::tuple<std::vector<CryptoNote::KeyInput>, std::vector<Crypto::SecretKey>> se
             tmpKeyPair.publicKey, tmpKeyPair.secretKey, keyImage
         );
 
+        /* TODO: Log this or throw an exception? */
+        if (tmpKeyPair.publicKey != input.outputs[input.realOutput].key)
+        {
+            std::cout << "Invalid transaction..." << std::endl;
+        }
+
         CryptoNote::KeyInput keyInput;
 
         keyInput.amount = input.amount;
@@ -485,8 +499,11 @@ std::tuple<std::vector<CryptoNote::KeyInput>, std::vector<Crypto::SecretKey>> se
         {
             keyInput.outputIndexes.push_back(output.index);
         }
-
-        /* TODO: ??? */
+        
+        /* Convert our indexes to relative indexes - for example, if we
+           originally had [5, 10, 20, 21, 22], this would become
+           [5, 5, 10, 1, 1]. Due to this, the indexes MUST be sorted - they
+           are serialized as a uint32_t, so negative values will overflow! */
         keyInput.outputIndexes = CryptoNote::absolute_output_offsets_to_relative(keyInput.outputIndexes);
 
         /* Store the key input */
@@ -558,7 +575,7 @@ CryptoNote::Transaction generateRingSignatures(
     );
 
     size_t i = 0;
-
+    
     /* Add the transaction signatures */
     for (const auto input : inputsAndFakes)
     {
@@ -575,11 +592,15 @@ CryptoNote::Transaction generateRingSignatures(
         }
 
         /* Generate the ring signature, result is placed in signatures */
-        Crypto::generate_ring_signature(
+        bool r = Crypto::generate_ring_signature(
             txPrefixHash, boost::get<CryptoNote::KeyInput>(tx.inputs[i]).keyImage,
-            publicKeys, tmpSecretKeys[i], input.realOutput,
-            signatures.data()
+            publicKeys, tmpSecretKeys[i], input.realOutput, signatures.data()
         );
+
+        if (!r)
+        {
+            std::cout << "Failed to create ring signature..." << std::endl;
+        }
 
         /* Add the signatures to the transaction */
         tx.signatures.push_back(signatures);

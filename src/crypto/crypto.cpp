@@ -296,7 +296,7 @@ namespace Crypto {
     buf.h = prefix_hash;
     buf.key = reinterpret_cast<const EllipticCurvePoint&>(pub);
     if (ge_frombytes_vartime(&tmp3, reinterpret_cast<const unsigned char*>(&pub)) != 0) {
-      abort();
+      return false;
     }
     if (sc_check(reinterpret_cast<const unsigned char*>(&sig)) != 0 || sc_check(reinterpret_cast<const unsigned char*>(&sig) + 32) != 0) {
       return false;
@@ -370,7 +370,7 @@ namespace Crypto {
     return sizeof(rs_comm) + pubs_count * sizeof(((rs_comm*)0)->ab[0]);
   }
 
-  void crypto_ops::generate_ring_signature(const Hash &prefix_hash, const KeyImage &image,
+  bool crypto_ops::generate_ring_signature(const Hash &prefix_hash, const KeyImage &image,
     const PublicKey *const *pubs, size_t pubs_count,
     const SecretKey &sec, size_t sec_index,
     Signature *sig) {
@@ -398,7 +398,7 @@ namespace Crypto {
     }
 #endif
     if (ge_frombytes_vartime(&image_unp, reinterpret_cast<const unsigned char*>(&image)) != 0) {
-      abort();
+      return false;
     }
     ge_dsm_precomp(image_pre, &image_unp);
     sc_0(reinterpret_cast<unsigned char*>(&sum));
@@ -417,7 +417,7 @@ namespace Crypto {
         random_scalar(reinterpret_cast<EllipticCurveScalar&>(sig[i]));
         random_scalar(*reinterpret_cast<EllipticCurveScalar*>(reinterpret_cast<unsigned char*>(&sig[i]) + 32));
         if (ge_frombytes_vartime(&tmp3, reinterpret_cast<const unsigned char*>(&*pubs[i])) != 0) {
-          abort();
+            return false;
         }
         ge_double_scalarmult_base_vartime(&tmp2, reinterpret_cast<unsigned char*>(&sig[i]), &tmp3, reinterpret_cast<unsigned char*>(&sig[i]) + 32);
         ge_tobytes(reinterpret_cast<unsigned char*>(&buf->ab[i].a), &tmp2);
@@ -461,7 +461,7 @@ namespace Crypto {
         return false;
       }
       if (ge_frombytes_vartime(&tmp3, reinterpret_cast<const unsigned char*>(&*pubs[i])) != 0) {
-        abort();
+        return false;
       }
       ge_double_scalarmult_base_vartime(&tmp2, reinterpret_cast<const unsigned char*>(&sig[i]), &tmp3, reinterpret_cast<const unsigned char*>(&sig[i]) + 32);
       ge_tobytes(reinterpret_cast<unsigned char*>(&buf->ab[i].a), &tmp2);
