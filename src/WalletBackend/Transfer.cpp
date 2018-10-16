@@ -39,7 +39,7 @@ namespace
 
             /* If we have for example, 1010 - we want 1000 + 10,
                not 1000 + 0 + 10 + 0 */
-            if (amount != 0)
+            if (denomination != 0)
             {
                 splitAmounts.push_back(denomination);
             }
@@ -223,7 +223,7 @@ std::tuple<WalletError, Crypto::Hash> WalletBackend::sendTransactionAdvanced(
     CryptoNote::Transaction setupTX;
 
     /* TODO: Put as a constant somewhere */
-    setupTX.version = 2;
+    setupTX.version = CryptoNote::CURRENT_TRANSACTION_VERSION;
 
     /* Unlock time is for losers */
     setupTX.unlockTime = 0;
@@ -265,16 +265,16 @@ std::tuple<WalletError, Crypto::Hash> WalletBackend::sendTransactionAdvanced(
 
     auto err = error1.get();
 
+    Crypto::Hash transactionHash = getTransactionHash(finalTransaction);
+
     if (err)
     {
         std::cout << "Failed to send transaction: " << err << ", "
                   << err.message() << std::endl;
 
         /* TODO: Handle error here */
-        return {SUCCESS, Crypto::Hash()};
+        return {SUCCESS, transactionHash};
     }
-
-    Crypto::Hash transactionHash = getTransactionHash(finalTransaction);
 
     /* TODO: Deduct balance, remove inputs, etc */
 
