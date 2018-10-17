@@ -82,6 +82,8 @@ json SubWallets::toJson() const
         {"publicSpendKeys", m_publicSpendKeys},
         {"subWallet", subWalletsToVector(m_subWallets)},
         {"transactions", m_transactions},
+        {"privateViewKey", m_privateViewKey},
+        {"isViewWallet", m_isViewWallet},
     };
 }
 
@@ -90,6 +92,8 @@ void SubWallets::fromJson(const json &j)
     m_publicSpendKeys = j.at("publicSpendKeys").get<std::vector<Crypto::PublicKey>>();
     m_subWallets = vectorToSubWallets(j.at("subWallet").get<std::vector<SubWallet>>());
     m_transactions = j.at("transactions").get<std::vector<WalletTypes::Transaction>>();
+    m_privateViewKey = j.at("privateViewKey").get<Crypto::SecretKey>();
+    m_isViewWallet = j.at("isViewWallet").get<bool>();
 }
 
 ///////////////////
@@ -111,9 +115,7 @@ json WalletBackend::toJson() const
     return
     {
         {"walletFileFormatVersion", Constants::WALLET_FILE_FORMAT_VERSION},
-        {"privateViewKey", m_privateViewKey},
         {"subWallets", *m_subWallets},
-        {"isViewWallet", m_isViewWallet},
         {"walletSynchronizer", *m_walletSynchronizer}
     };
 }
@@ -132,13 +134,9 @@ void WalletBackend::fromJson(const json &j)
         );
     }
 
-    m_privateViewKey = j.at("privateViewKey").get<Crypto::SecretKey>();
-
     m_subWallets = std::make_shared<SubWallets>(
         j.at("subWallets").get<SubWallets>()
     );
-
-    m_isViewWallet = j.at("isViewWallet").get<bool>();
 
     m_walletSynchronizer = std::make_shared<WalletSynchronizer>(
         j.at("walletSynchronizer").get<WalletSynchronizer>()

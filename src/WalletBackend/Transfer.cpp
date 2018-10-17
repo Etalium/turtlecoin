@@ -2,11 +2,9 @@
 // 
 // Please see the included LICENSE file for more information.
 
-////////////////////////////////////////
-/* TODO: Pass in a pointer to wallet backend? */
-#include <WalletBackend/WalletBackend.h>
+///////////////////////////////////
 #include <WalletBackend/Transfer.h>
-////////////////////////////////////////
+///////////////////////////////////
 
 #include <config/WalletConfig.h>
 
@@ -18,87 +16,10 @@
 
 #include <WalletBackend/Utilities.h>
 #include <WalletBackend/ValidateParameters.h>
+#include <WalletBackend/WalletBackend.h>
 
-//////////////////////////
-/* NON MEMBER FUNCTIONS */
-//////////////////////////
-
-namespace
+namespace SendTransaction
 {
-    /* Split each amount into uniform amounts, e.g.
-       1234567 = 1000000 + 200000 + 30000 + 4000 + 500 + 60 + 7 */
-    std::vector<uint64_t> splitAmountIntoDenominations(uint64_t amount)
-    {
-        std::vector<uint64_t> splitAmounts;
-
-        int multiplier = 1;
-
-        while (amount > 0)
-        {
-            uint64_t denomination = multiplier * (amount % 10);
-
-            /* If we have for example, 1010 - we want 1000 + 10,
-               not 1000 + 0 + 10 + 0 */
-            if (denomination != 0)
-            {
-                splitAmounts.push_back(denomination);
-            }
-
-            amount /= 10;
-
-            multiplier *= 10;
-        }
-
-        return splitAmounts;
-    }
-
-    std::vector<CryptoNote::TransactionInput> keyInputToTransactionInput(
-        const std::vector<CryptoNote::KeyInput> keyInputs)
-    {
-        std::vector<CryptoNote::TransactionInput> result;
-
-        for (const auto input : keyInputs)
-        {
-            result.push_back(input);
-        }
-
-        return result;
-    }
-
-    std::vector<CryptoNote::TransactionOutput> keyOutputToTransactionOutput(
-        const std::vector<WalletTypes::KeyOutput> keyOutputs)
-    {
-        std::vector<CryptoNote::TransactionOutput> result;
-
-        for (const auto output : keyOutputs)
-        {
-            CryptoNote::TransactionOutput tmpOutput;
-
-            tmpOutput.amount = output.amount;
-
-            CryptoNote::KeyOutput tmpKey;
-
-            tmpKey.key = output.key;
-
-            tmpOutput.target = tmpKey;
-
-            result.push_back(tmpOutput);
-        }
-
-        return result;
-    }
-
-    Crypto::Hash getTransactionHash(CryptoNote::Transaction tx)
-    {
-        std::vector<uint8_t> data = CryptoNote::toBinaryArray(tx);
-        return Crypto::cn_fast_hash(data.data(), data.size());
-    }
-    
-} // namespace
-
-/////////////////////
-/* CLASS FUNCTIONS */
-/////////////////////
 
 /* A basic send transaction, the most common transaction, one destination,
    default fee, default mixin, default change address
@@ -110,42 +31,47 @@ namespace
    
    If you want to return change to a specific wallet, use
    sendTransactionAdvanced() */
-std::tuple<WalletError, Crypto::Hash> WalletBackend::sendTransactionBasic(
+std::tuple<WalletError, Crypto::Hash> sendTransactionBasic(
     std::string destination,
     const uint64_t amount,
-    std::string paymentID)
+    std::string paymentID,
+    const std::shared_ptr<CryptoNote::NodeRpcProxy> daemon,
+    const std::shared_ptr<SubWallets> subWallets)
 {
     std::vector<std::pair<std::string, uint64_t>> destinations = {
         {destination, amount}
     };
 
     const uint64_t mixin = CryptoNote::Mixins::getDefaultMixin(
-        m_daemon->getLastKnownBlockHeight()
+        daemon->getLastKnownBlockHeight()
     );
 
     const uint64_t fee = WalletConfig::defaultFee;
 
     /* Assumes the container has at least one subwallet - this is true as long
        as the static constructors were used */
-    const std::string changeAddress = m_subWallets->getDefaultChangeAddress();
+    const std::string changeAddress = subWallets->getDefaultChangeAddress();
 
     return sendTransactionAdvanced(
-        destinations, mixin, fee, paymentID, {}, changeAddress
+        destinations, mixin, fee, paymentID, {}, changeAddress, daemon,
+        subWallets
     );
 }
 
-std::tuple<WalletError, Crypto::Hash> WalletBackend::sendTransactionAdvanced(
+std::tuple<WalletError, Crypto::Hash> sendTransactionAdvanced(
     std::vector<std::pair<std::string, uint64_t>> addressesAndAmounts,
     const uint64_t mixin,
     const uint64_t fee,
     std::string paymentID,
     const std::vector<std::string> addressesToTakeFrom,
-    const std::string changeAddress)
+    const std::string changeAddress,
+    const std::shared_ptr<CryptoNote::NodeRpcProxy> daemon,
+    const std::shared_ptr<SubWallets> subWallets)
 {
     /* Validate the transaction input parameters */
     const WalletError error = validateTransaction(
         addressesAndAmounts, mixin, fee, paymentID, addressesToTakeFrom,
-        changeAddress, *m_subWallets, m_daemon->getLastKnownBlockHeight()
+        changeAddress, subWallets, daemon->getLastKnownBlockHeight()
     );
 
     if (error)
@@ -163,7 +89,8 @@ std::tuple<WalletError, Crypto::Hash> WalletBackend::sendTransactionAdvanced(
             continue;
         }
 
-        auto [extractedAddress, extractedPaymentID] = extractIntegratedAddressData(address);
+        auto [extractedAddress, extractedPaymentID]
+            = Utilities::extractIntegratedAddressData(address);
 
         address = extractedAddress;
         paymentID = extractedPaymentID;
@@ -173,17 +100,17 @@ std::tuple<WalletError, Crypto::Hash> WalletBackend::sendTransactionAdvanced(
     const bool takeFromAllSubWallets = addressesToTakeFrom.empty();
 
     /* The total amount we are sending */
-    const uint64_t totalAmount = getTransactionSum(addressesAndAmounts) + fee;
+    const uint64_t totalAmount = Utilities::getTransactionSum(addressesAndAmounts) + fee;
 
     /* Convert the addresses to public spend keys */
     const std::vector<Crypto::PublicKey> subWalletsToTakeFrom
-        = addressesToSpendKeys(addressesToTakeFrom);
+        = Utilities::addressesToSpendKeys(addressesToTakeFrom);
 
     /* The transaction 'inputs' - key images we have previously received, plus
        their sum. The sumOfInputs is sometimes (most of the time) greater than
        the amount we want to send, so we need to send some back to ourselves
        as change. */
-    auto [ourInputs, sumOfInputs] = m_subWallets->getTransactionInputsForAmount(
+    auto [ourInputs, sumOfInputs] = subWallets->getTransactionInputsForAmount(
         totalAmount, takeFromAllSubWallets, subWalletsToTakeFrom
     );
 
@@ -199,11 +126,11 @@ std::tuple<WalletError, Crypto::Hash> WalletBackend::sendTransactionAdvanced(
     /* TODO: Split into separate function here */
 
     /* Mix our inputs with fake ones from the network to hide who we are */
-    const auto inputsAndFakes = setupFakeInputs(ourInputs, mixin, m_daemon);
+    const auto inputsAndFakes = setupFakeInputs(ourInputs, mixin, daemon);
 
     /* Setup the transaction inputs */
     const auto [transactionInputs, tmpSecretKeys] = setupInputs(
-        inputsAndFakes, m_privateViewKey
+        inputsAndFakes, subWallets->getPrivateViewKey()
     );
 
     /* Setup the transaction outputs */
@@ -257,7 +184,7 @@ std::tuple<WalletError, Crypto::Hash> WalletBackend::sendTransactionAdvanced(
     /* TODO */
     auto error1 = errorPromise.get_future();
 
-    m_daemon->relayTransaction(finalTransaction, callback);
+    daemon->relayTransaction(finalTransaction, callback);
 
     auto err = error1.get();
 
@@ -293,7 +220,7 @@ std::vector<WalletTypes::TransactionDestination> setupDestinations(
     for (const auto [address, amount] : addressesAndAmounts)
     {
         /* Grab the public keys from the receiver address */
-        const auto [publicSpendKey, publicViewKey] = addressToKeys(address);
+        const auto [publicSpendKey, publicViewKey] = Utilities::addressToKeys(address);
 
         /* Split transfer into denominations and create an output for each */
         for (const auto denomination : splitAmountIntoDenominations(amount))
@@ -609,3 +536,74 @@ CryptoNote::Transaction generateRingSignatures(
 
     return tx;
 }
+
+/* Split each amount into uniform amounts, e.g.
+   1234567 = 1000000 + 200000 + 30000 + 4000 + 500 + 60 + 7 */
+std::vector<uint64_t> splitAmountIntoDenominations(uint64_t amount)
+{
+    std::vector<uint64_t> splitAmounts;
+
+    int multiplier = 1;
+
+    while (amount > 0)
+    {
+        uint64_t denomination = multiplier * (amount % 10);
+
+        /* If we have for example, 1010 - we want 1000 + 10,
+           not 1000 + 0 + 10 + 0 */
+        if (denomination != 0)
+        {
+            splitAmounts.push_back(denomination);
+        }
+
+        amount /= 10;
+
+        multiplier *= 10;
+    }
+
+    return splitAmounts;
+}
+
+std::vector<CryptoNote::TransactionInput> keyInputToTransactionInput(
+    const std::vector<CryptoNote::KeyInput> keyInputs)
+{
+    std::vector<CryptoNote::TransactionInput> result;
+
+    for (const auto input : keyInputs)
+    {
+        result.push_back(input);
+    }
+
+    return result;
+}
+
+std::vector<CryptoNote::TransactionOutput> keyOutputToTransactionOutput(
+    const std::vector<WalletTypes::KeyOutput> keyOutputs)
+{
+    std::vector<CryptoNote::TransactionOutput> result;
+
+    for (const auto output : keyOutputs)
+    {
+        CryptoNote::TransactionOutput tmpOutput;
+
+        tmpOutput.amount = output.amount;
+
+        CryptoNote::KeyOutput tmpKey;
+
+        tmpKey.key = output.key;
+
+        tmpOutput.target = tmpKey;
+
+        result.push_back(tmpOutput);
+    }
+
+    return result;
+}
+
+Crypto::Hash getTransactionHash(CryptoNote::Transaction tx)
+{
+    std::vector<uint8_t> data = CryptoNote::toBinaryArray(tx);
+    return Crypto::cn_fast_hash(data.data(), data.size());
+}
+
+} // namespace SendTransaction
