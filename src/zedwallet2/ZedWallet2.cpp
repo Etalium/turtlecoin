@@ -20,7 +20,7 @@ int main()
 
     uint64_t seedScanHeight = 822500;
 
-    uint64_t keyScanHeight = 890800;
+    uint64_t keyScanHeight = 890000;
 
     Crypto::SecretKey privateSpendKey;
     Crypto::SecretKey privateViewKey;

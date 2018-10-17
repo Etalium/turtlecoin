@@ -334,6 +334,8 @@ void WalletSynchronizer::processTransaction(
 
         /* Store the transaction */
         m_subWallets->addTransaction(tx);
+
+        m_eventHandler->onTransaction.fire(tx);
     }
 }
 
