@@ -27,7 +27,7 @@ std::tuple<std::vector<CryptoNote::KeyInput>, std::vector<Crypto::SecretKey>> se
     const Crypto::SecretKey privateViewKey);
 
 std::tuple<std::vector<WalletTypes::KeyOutput>, Crypto::PublicKey> setupOutputs(
-    const std::vector<WalletTypes::TransactionDestination> destinations);
+    std::vector<WalletTypes::TransactionDestination> destinations);
 
 CryptoNote::Transaction generateRingSignatures(
     CryptoNote::Transaction tx,

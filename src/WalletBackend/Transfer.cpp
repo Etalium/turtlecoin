@@ -222,10 +222,8 @@ std::tuple<WalletError, Crypto::Hash> WalletBackend::sendTransactionAdvanced(
 
     CryptoNote::Transaction setupTX;
 
-    /* TODO: Put as a constant somewhere */
     setupTX.version = CryptoNote::CURRENT_TRANSACTION_VERSION;
 
-    /* Unlock time is for losers */
     setupTX.unlockTime = 0;
 
     /* Convert from key inputs to the boost uglyness */
@@ -245,8 +243,6 @@ std::tuple<WalletError, Crypto::Hash> WalletBackend::sendTransactionAdvanced(
     const CryptoNote::Transaction finalTransaction = generateRingSignatures(
         setupTX, inputsAndFakes, tmpSecretKeys
     );
-
-    /* TODO: Get transaction hash - is it a hash of the prefix or not? */
 
     /* TODO: Maybe another function here */
     std::promise<std::error_code> errorPromise;
@@ -321,7 +317,6 @@ std::vector<WalletTypes::ObscuredInput> setupFakeInputs(
     const uint64_t mixin,
     const std::shared_ptr<CryptoNote::NodeRpcProxy> daemon)
 {
-    /* TODO ??? */
     /* Sort our inputs by amount so they match up with the values we get
        back from the daemon */
     std::sort(sources.begin(), sources.end(), [](const auto &lhs, const auto &rhs)
@@ -450,6 +445,7 @@ std::tuple<std::vector<CryptoNote::KeyInput>, std::vector<Crypto::SecretKey>> se
 
     for (const auto input : inputsAndFakes)
     {
+        /* TODO: Do this in another function? */
         Crypto::KeyDerivation derivation;
 
         /* Derive the key from the transaction public key, and our private
@@ -514,8 +510,15 @@ std::tuple<std::vector<CryptoNote::KeyInput>, std::vector<Crypto::SecretKey>> se
 }
 
 std::tuple<std::vector<WalletTypes::KeyOutput>, Crypto::PublicKey> setupOutputs(
-    const std::vector<WalletTypes::TransactionDestination> destinations)
+    std::vector<WalletTypes::TransactionDestination> destinations)
 {
+    /* Sort the destinations by amount. Helps obscure which output belongs to
+       which transaction */
+    std::sort(destinations.begin(), destinations.end(), [](const auto &lhs, const auto &rhs)
+    {
+        return lhs.amount < rhs.amount;
+    });
+
     /* Generate a random key pair for the transaction - public key gets added
        to tx extra */
     CryptoNote::KeyPair randomTxKey = CryptoNote::generateKeyPair();
@@ -551,13 +554,6 @@ std::tuple<std::vector<WalletTypes::KeyOutput>, Crypto::PublicKey> setupOutputs(
         outputIndex++;
     }
 
-    /* Sort the outputs by amount - TODO: Why do we do this? - Maybe to
-       obscure multiple destinations? */
-    std::sort(outputs.begin(), outputs.end(), [](const auto &lhs, const auto &rhs)
-    {
-        return lhs.amount < rhs.amount;
-    });
-
     return {outputs, randomTxKey.publicKey};
 }
 
@@ -586,7 +582,9 @@ CryptoNote::Transaction generateRingSignatures(
         std::vector<const Crypto::PublicKey *> publicKeys;
 
         /* Add all the fake outs public keys to a vector */
-        for (const auto output : input.outputs)
+        /* TODO: Do this in a less horrible pointerifc way along with
+           generate_ring_signature */
+        for (const auto &output : input.outputs)
         {
             publicKeys.push_back(&output.key);
         }
@@ -597,6 +595,7 @@ CryptoNote::Transaction generateRingSignatures(
             publicKeys, tmpSecretKeys[i], input.realOutput, signatures.data()
         );
 
+        /* TODO: Log this or throw an exception? */
         if (!r)
         {
             std::cout << "Failed to create ring signature..." << std::endl;

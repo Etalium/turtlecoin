@@ -430,6 +430,8 @@ namespace Crypto {
     hash_to_scalar(buf, rs_comm_size(pubs_count), h);
     sc_sub(reinterpret_cast<unsigned char*>(&sig[sec_index]), reinterpret_cast<unsigned char*>(&h), reinterpret_cast<unsigned char*>(&sum));
     sc_mulsub(reinterpret_cast<unsigned char*>(&sig[sec_index]) + 32, reinterpret_cast<unsigned char*>(&sig[sec_index]), reinterpret_cast<const unsigned char*>(&sec), reinterpret_cast<unsigned char*>(&k));
+
+    return true;
   }
 
   bool crypto_ops::check_ring_signature(const Hash &prefix_hash, const KeyImage &image,
