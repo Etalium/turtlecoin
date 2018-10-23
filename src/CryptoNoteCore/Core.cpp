@@ -538,6 +538,8 @@ WalletTypes::RawCoinbaseTransaction Core::getRawCoinbaseTransaction(
 
     transaction.transactionPublicKey = getPubKeyFromExtra(t.extra);
 
+    transaction.unlockTime = t.unlockTime;
+
     /* Fill in the simplified key outputs */
     for (const auto &output : t.outputs)
     {
@@ -571,6 +573,8 @@ WalletTypes::RawTransaction Core::getRawTransaction(
 
     /* Get the payment ID if it exists (Empty string if it doesn't) */
     transaction.paymentID = getPaymentIDFromExtra(t.extra);
+
+    transaction.unlockTime = t.unlockTime;
     
     /* Simplify the outputs */
     for (const auto &output : t.outputs)
