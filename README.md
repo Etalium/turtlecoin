@@ -18,7 +18,7 @@ If you would like to compile yourself, read on.
 
 ##### Prerequisites
 
-You will need the following packages: boost (1.55 or higher), cmake, make, and git.
+You will need the following packages: boost, cmake (3.8 or higher), make, and git.
 
 You will also need either GCC/G++, or Clang.
 
@@ -26,12 +26,13 @@ If you are using GCC, you will need GCC-6.0 or higher.
 
 If you are using Clang, you will need Clang 5.0 or higher. You will also need libstdc++\-6.0 or higher.
 
-##### GCC setup, on Ubuntu 14.04
+##### GCC setup, on Ubuntu
 
 - `sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y`
 - `sudo apt-get update`
 - `sudo apt-get install aptitude -y`
-- `sudo aptitude install -y build-essential g++-8 gcc-8 git cmake libboost-all-dev`
+- `sudo aptitude install -y build-essential g++-8 gcc-8 git libboost-all-dev python-pip`
+- `sudo pip install cmake`
 - `export CC=gcc-8`
 - `export CXX=g++-8`
 - `git clone -b master --single-branch https://github.com/turtlecoin/turtlecoin`
@@ -46,13 +47,18 @@ The binaries will be in the `src` folder when you are complete.
 - `cd src`
 - `./TurtleCoind --version`
 
-##### Clang setup, on Ubuntu 14.04
+##### Clang setup, on Ubuntu
 
 - `sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y`
-- `sudo add-apt-repository ppa:ubuntu-llvm-toolchain-trusty-6.0`
+- `wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -`
+
+You may need to replace trusty (14.04) with xenial (16.04) or cosmic (18.04) in the below command - https://apt.llvm.org/
+
+- `sudo add-apt-repository "deb https://apt.llvm.org/trusty/ llvm-toolchain-trusty 6.0 main"
 - `sudo apt-get update`
 - `sudo apt-get install aptitude -y`
-- `sudo aptitude install -y build-essential clang-6.0 libstdc++-7-dev git cmake libboost-all-dev`
+- `sudo aptitude install -y -o Aptitude::ProblemResolver::SolutionCost='100*canceled-actions,200*removals' build-essential clang-6.0 libstdc++-7-dev git libboost-all-dev python-pip
+- `sudo pip install cmake`
 - `export CC=clang-6.0`
 - `export CXX=clang++-6.0`
 - `git clone -b master --single-branch https://github.com/turtlecoin/turtlecoin`
