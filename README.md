@@ -54,10 +54,10 @@ The binaries will be in the `src` folder when you are complete.
 
 You may need to replace trusty (14.04) with xenial (16.04) or cosmic (18.04) in the below command - https://apt.llvm.org/
 
-- `sudo add-apt-repository "deb https://apt.llvm.org/trusty/ llvm-toolchain-trusty 6.0 main"
+- `sudo add-apt-repository "deb https://apt.llvm.org/trusty/ llvm-toolchain-trusty 6.0 main"`
 - `sudo apt-get update`
 - `sudo apt-get install aptitude -y`
-- `sudo aptitude install -y -o Aptitude::ProblemResolver::SolutionCost='100*canceled-actions,200*removals' build-essential clang-6.0 libstdc++-7-dev git libboost-all-dev python-pip
+- `sudo aptitude install -y -o Aptitude::ProblemResolver::SolutionCost='100*canceled-actions,200*removals' build-essential clang-6.0 libstdc++-7-dev git libboost-all-dev python-pip`
 - `sudo pip install cmake`
 - `export CC=clang-6.0`
 - `export CXX=clang++-6.0`
